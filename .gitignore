@@ -1,0 +1,23 @@
+# Node / Frontend
+node_modules/
+dist/
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Large generated data — do NOT commit batch streaming files
+adls-raw-data/batch_user_behavior.json
+adls-raw-data/batch_logistics.json
+uber-project/
+generate_*.py
+
+# Local Event Hub log (gets very large quickly)
+simulator-api/local_event_hub_log.jsonl
+
+# OS
+.DS_Store
+Thumbs.db
