@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, MapPin, Truck, CheckCircle, AlertTriangle, RefreshCcw } from 'lucide-react';
+import { Package, MapPin, Truck, CheckCircle, AlertTriangle, RefreshCcw, Radio, Navigation } from 'lucide-react';
 import Tilt from 'react-parallax-tilt';
 import { getRandomRider } from '../data/mockData';
 import './LogisticsPanel.css';
@@ -9,7 +9,6 @@ const API_BASE = "http://localhost:8080/api/telemetry";
 const LogisticsPanel = ({ activeOrders, refreshOrders }) => {
     const [gpsEnabled, setGpsEnabled] = useState(false);
 
-    // Helper to send logistics telemetry
     const sendLogisticsEvent = (eventType, payload) => {
         fetch(`${API_BASE}/logistics`, {
             method: "POST",
@@ -22,7 +21,6 @@ const LogisticsPanel = ({ activeOrders, refreshOrders }) => {
         });
     };
 
-    // Simulate GPS Pings
     useEffect(() => {
         let interval;
         if (gpsEnabled && Object.keys(activeOrders).length > 0) {
@@ -48,11 +46,9 @@ const LogisticsPanel = ({ activeOrders, refreshOrders }) => {
         return () => clearInterval(interval);
     }, [gpsEnabled, activeOrders]);
 
-    // Handle status progression
     const statuses = ["Placed", "Preparing", "Picked Up", "Delivered"];
 
     const handleStatusChange = (orderId, oldStatus, newStatus, riderId) => {
-        // Send event to backend
         sendLogisticsEvent("order_status_update", {
             order_id: orderId,
             customer_id: activeOrders[orderId].customer_id,
@@ -61,7 +57,6 @@ const LogisticsPanel = ({ activeOrders, refreshOrders }) => {
             status: newStatus
         });
 
-        // Update local UI state
         refreshOrders(orderId, { status: newStatus });
 
         if (newStatus === "Delivered") {
@@ -72,7 +67,7 @@ const LogisticsPanel = ({ activeOrders, refreshOrders }) => {
                 rider_id: riderId,
                 status: "Delivered"
             });
-            setTimeout(() => refreshOrders(orderId, null), 2000); // Remove after delay
+            setTimeout(() => refreshOrders(orderId, null), 2000);
         }
     };
 
@@ -100,45 +95,71 @@ const LogisticsPanel = ({ activeOrders, refreshOrders }) => {
 
     return (
         <div className="logistics-panel custom-scrollbar">
-            <div className="panel-header">
+            <div className="panel-header glass-panel">
                 <div className="title-area">
                     <h3>Dispatcher Dashboard</h3>
-                    <span className="subtitle">Real-time Operations & Logistics</span>
+                    <span className="subtitle">Real-time Fleet Operations</span>
                 </div>
 
                 <div className={`gps-toggle ${gpsEnabled ? 'active' : ''}`} onClick={() => setGpsEnabled(!gpsEnabled)}>
                     <div className="toggle-icon">
-                        {gpsEnabled ? <div className="pulse-dot"></div> : <MapPin size={16} />}
+                        {gpsEnabled ? (
+                            <Radio size={16} className="pulse-icon" />
+                        ) : (
+                            <Navigation size={16} />
+                        )}
                     </div>
-                    <span>{gpsEnabled ? 'GPS Broadcasting' : 'Hover GPS Disabled'}</span>
+                    <span>{gpsEnabled ? 'GPS Live' : 'GPS Off'}</span>
                 </div>
             </div>
 
             <div className="orders-container">
                 {Object.keys(activeOrders).length === 0 ? (
                     <div className="empty-state">
-                        <Package size={48} opacity={0.2} />
-                        <p>No active orders.</p>
-                        <span>Transactions in the Consumer App will appear here.</span>
+                        <div className="empty-icon-wrapper">
+                            <Package size={56} className="empty-icon" />
+                            <div className="empty-pulse"></div>
+                        </div>
+                        <p>No Active Orders</p>
+                        <span>Orders from the consumer app will appear here.</span>
                     </div>
                 ) : (
-                    Object.entries(activeOrders).map(([orderId, order]) => {
+                    Object.entries(activeOrders).map(([orderId, order], index) => {
                         const currentIndex = statuses.indexOf(order.status);
 
                         return (
-                            <Tilt key={orderId} tiltMaxAngleX={2} tiltMaxAngleY={2} scale={1.01} transitionSpeed={2000} className="tilt-element">
-                                <div className="order-card animate-slide-up">
+                            <Tilt
+                                key={orderId}
+                                tiltMaxAngleX={2}
+                                tiltMaxAngleY={2}
+                                scale={1.01}
+                                transitionSpeed={2000}
+                                className="tilt-element"
+                                style={{ animationDelay: `${index * 0.1}s` }}
+                            >
+                                <div className="order-card fade-in-card">
+                                    <div className="card-glow"></div>
+
                                     <div className="order-header">
-                                        <div className="order-id">
-                                            <span className="hash">#</span>{orderId}
+                                        <div className="order-id-wrapper">
+                                            <Package size={18} className="order-icon" />
+                                            <div className="order-id">
+                                                <span className="hash">#</span>{orderId}
+                                            </div>
                                         </div>
                                         <div className={`status-badge status-${order.status.toLowerCase().replace(' ', '-')}`}>
-                                            {order.status}
+                                            {order.status === "Placed" && <Package size={12} />}
+                                            {order.status === "Preparing" && <Truck size={12} />}
+                                            {order.status === "Picked Up" && <Navigation size={12} />}
+                                            {order.status === "Delivered" && <CheckCircle size={12} />}
+                                            <span>{order.status}</span>
                                         </div>
                                     </div>
 
                                     <div className="rider-info">
-                                        <Truck size={14} /> Assigned to: <strong>{order.rider_id}</strong>
+                                        <Truck size={14} className="rider-icon" />
+                                        <span>Assigned to:</span>
+                                        <strong>{order.rider_id}</strong>
                                     </div>
 
                                     <div className="status-timeline">
@@ -149,17 +170,23 @@ const LogisticsPanel = ({ activeOrders, refreshOrders }) => {
                                                 disabled={index <= currentIndex}
                                                 onClick={() => handleStatusChange(orderId, order.status, status, order.rider_id)}
                                             >
-                                                {status}
+                                                {index === 0 && <Package size={14} />}
+                                                {index === 1 && <Truck size={14} />}
+                                                {index === 2 && <Navigation size={14} />}
+                                                {index === 3 && <CheckCircle size={14} />}
+                                                <span>{status}</span>
                                             </button>
                                         ))}
                                     </div>
 
                                     <div className="edge-cases">
                                         <button className="btn-edge-case warn" onClick={() => handleReassign(orderId, order.rider_id)}>
-                                            <RefreshCcw size={14} /> Reassign (SCD 2)
+                                            <RefreshCcw size={14} />
+                                            <span>Reassign</span>
                                         </button>
                                         <button className="btn-edge-case danger" onClick={() => handleSlaBreach(orderId, order.status)}>
-                                            <AlertTriangle size={14} /> Force SLA Breach
+                                            <AlertTriangle size={14} />
+                                            <span>SLA Breach</span>
                                         </button>
                                     </div>
                                 </div>

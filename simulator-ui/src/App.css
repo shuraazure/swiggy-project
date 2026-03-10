@@ -3,31 +3,50 @@
   height: 100vh;
   position: relative;
   overflow: hidden;
-  background-color: var(--bg-color);
+  background: linear-gradient(135deg, #0f1419 0%, #1a1f2e 50%, #0f1419 100%);
 }
 
 .bg-shape {
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
+  filter: blur(120px);
   z-index: 0;
-  opacity: 0.5;
+  opacity: 0.3;
+  animation: float 20s infinite ease-in-out;
+}
+
+@keyframes float {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(30px, -30px); }
+  66% { transform: translate(-20px, 20px); }
 }
 
 .shape-1 {
-  width: 500px;
-  height: 500px;
-  background: rgba(252, 128, 25, 0.15);
-  top: -100px;
-  right: -100px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(252, 128, 25, 0.2), transparent);
+  top: -150px;
+  right: -150px;
+  animation-delay: 0s;
 }
 
 .shape-2 {
-  width: 600px;
-  height: 600px;
-  background: rgba(52, 152, 219, 0.1);
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(46, 204, 113, 0.15), transparent);
   bottom: -200px;
   left: -200px;
+  animation-delay: 5s;
+}
+
+.shape-3 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(52, 152, 219, 0.12), transparent);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: 10s;
 }
 
 .main-container {
@@ -43,45 +62,55 @@
 
 /* Sidebar */
 .side-nav {
-  width: 250px;
-  border-radius: 24px;
+  width: 260px;
+  border-radius: 28px;
   display: flex;
   flex-direction: column;
   padding: 2rem 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   margin-bottom: 3rem;
+  cursor: pointer;
 }
 
 .logo-circle {
-  width: 40px;
-  height: 40px;
-  background: var(--swiggy-gradient);
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #fc8019, #ff6b35);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: 800;
-  font-size: 1.2rem;
-  box-shadow: 0 4px 12px rgba(252, 128, 25, 0.3);
+  font-size: 1.3rem;
+  box-shadow: 0 8px 25px rgba(252, 128, 25, 0.4);
+  transition: transform 0.3s ease;
+}
+
+.brand:hover .logo-circle {
+  transform: rotate(90deg) scale(1.1);
 }
 
 .brand h1 {
-  font-size: 1.25rem;
+  font-size: 1.3rem;
   font-weight: 800;
-  color: var(--text-primary);
+  color: #ffffff;
   letter-spacing: -0.5px;
 }
 
 .nav-menu {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .nav-item {
@@ -92,32 +121,36 @@
   background: transparent;
   width: 100%;
   border-radius: 16px;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.6);
   font-weight: 600;
   font-size: 0.95rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.5);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  transform: translateX(4px);
 }
 
 .nav-item.active {
-  background: var(--surface-color);
-  color: var(--swiggy-orange);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  background: linear-gradient(135deg, rgba(252, 128, 25, 0.15), rgba(255, 107, 53, 0.15));
+  color: #fc8019;
+  border-color: rgba(252, 128, 25, 0.3);
+  box-shadow: 0 6px 20px rgba(252, 128, 25, 0.2);
 }
 
 .order-count {
   margin-left: auto;
-  background: var(--swiggy-orange);
+  background: linear-gradient(135deg, #fc8019, #ff6b35);
   color: white;
   font-size: 0.75rem;
-  padding: 2px 8px;
+  padding: 4px 10px;
   border-radius: 12px;
   font-weight: 700;
-  animation: slideUp 0.3s ease;
+  animation: slideUp 0.3s ease, pulse 2s infinite;
+  box-shadow: 0 4px 15px rgba(252, 128, 25, 0.4);
 }
 
 /* Content Area */

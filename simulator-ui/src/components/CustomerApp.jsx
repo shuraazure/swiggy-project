@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Star, Clock, Heart, Zap, ChevronRight, X } from 'lucide-react';
+import { ShoppingBag, Star, Clock, Heart, Zap, ChevronRight, X, Sparkles, TrendingUp } from 'lucide-react';
 import { useIdle } from 'react-use';
 import Tilt from 'react-parallax-tilt';
+import { FOOD_ITEMS } from '../data/mockData';
 import './CustomerApp.css';
 
 const API_BASE = "http://localhost:8080/api/telemetry";
@@ -10,25 +11,24 @@ const CustomerApp = ({ customerId, onCheckout }) => {
   const [adId, setAdId] = useState(null);
   const [eventId, setEventId] = useState(null);
   const [cartTotal, setCartTotal] = useState(0);
+  const [cartItems, setCartItems] = useState({});
   const [showFlashSale, setShowFlashSale] = useState(false);
   const [flashSaleUsed, setFlashSaleUsed] = useState(false);
   const [activeFilter, setActiveFilter] = useState("All");
   const [isGroupOrder, setIsGroupOrder] = useState(false);
+  const [likedItems, setLikedItems] = useState(new Set());
 
   const observerRef = useRef(null);
   const promoRef = useRef(null);
 
-  // Inactivity / Exit Intent Detection (30s for demo purposes)
   const isIdle = useIdle(30000);
 
   useEffect(() => {
-    // If user is idle and they have items in cart, but haven't checked out...
     if (isIdle && cartTotal > 0 && !showFlashSale && !flashSaleUsed) {
       triggerFlashSale();
     }
   }, [isIdle, cartTotal, showFlashSale, flashSaleUsed]);
 
-  // Handle Mouse Exit Intent for Desktop
   const handleMouseLeave = (e) => {
     if (e.clientY <= 0 && cartTotal > 0 && !showFlashSale && !flashSaleUsed) {
       triggerFlashSale();
@@ -62,7 +62,6 @@ const CustomerApp = ({ customerId, onCheckout }) => {
   const handleFilterClick = (filterName) => {
     setActiveFilter(filterName);
 
-    // Simulate UI loading state & exact telemetry capture
     fetch(`${API_BASE}/user_behavior`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -97,14 +96,12 @@ const CustomerApp = ({ customerId, onCheckout }) => {
     }
   };
 
-  // Phase A, Part 2: Impression Tracking via Intersection Observer
   useEffect(() => {
     if (!promoRef.current) return;
 
     observerRef.current = new IntersectionObserver((entries) => {
       const entry = entries[0];
       if (entry.isIntersecting && !adId) {
-        // Generate UUID for this specific ad viewing session
         const newAdId = `AD-${Math.random().toString(36).substr(2, 9)}`;
         setAdId(newAdId);
 
@@ -115,16 +112,15 @@ const CustomerApp = ({ customerId, onCheckout }) => {
             event_type: "impression",
             event_id: `EVT-${Math.random().toString(36).substr(2, 9)}`,
             ad_id: newAdId,
-            restaurant_id: "R001", // Hardcoded to match the Bikanervala static ADLS entry
+            restaurant_id: "R001",
             customer_id: customerId,
             client_timestamp: new Date().toISOString()
           })
         });
 
-        // Disconnect after firing once
         observerRef.current.disconnect();
       }
-    }, { threshold: 0.5 }); // Ensure 50% is visible
+    }, { threshold: 0.5 });
 
     observerRef.current.observe(promoRef.current);
 
@@ -140,7 +136,7 @@ const CustomerApp = ({ customerId, onCheckout }) => {
       body: JSON.stringify({
         event_type: "click",
         event_id: `EVT-${Math.random().toString(36).substr(2, 9)}`,
-        ad_id: adId, // Ties back exactly to the impression
+        ad_id: adId,
         restaurant_id: "R001",
         customer_id: customerId,
         client_timestamp: new Date().toISOString()
@@ -148,13 +144,17 @@ const CustomerApp = ({ customerId, onCheckout }) => {
     });
   };
 
-  const handleAddToCart = (itemId, price) => {
-    // Generate Cart Session if it doesn't exist
+  const handleAddToCart = (item) => {
     const currentEventId = eventId || `CART-${Math.random().toString(36).substr(2, 9)}`;
     if (!eventId) setEventId(currentEventId);
 
-    const newTotal = parseFloat((cartTotal + price).toFixed(2));
+    const newTotal = parseFloat((cartTotal + item.price).toFixed(2));
     setCartTotal(newTotal);
+
+    setCartItems(prev => ({
+      ...prev,
+      [item.id]: (prev[item.id] || 0) + 1
+    }));
 
     fetch(`${API_BASE}/cart`, {
       method: "POST",
@@ -162,8 +162,8 @@ const CustomerApp = ({ customerId, onCheckout }) => {
       body: JSON.stringify({
         event_type: "add_to_cart",
         customer_id: customerId,
-        item_id: itemId,
-        price: price,
+        item_id: item.id,
+        price: item.price,
         event_id: currentEventId,
         restaurant_id: "R001",
         cart_value: newTotal,
@@ -195,32 +195,52 @@ const CustomerApp = ({ customerId, onCheckout }) => {
 
     onCheckout(finalTotal);
     setCartTotal(0);
+    setCartItems({});
     setEventId(null);
   };
 
+  const toggleLike = (itemId) => {
+    setLikedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  };
+
+  const filteredItems = activeFilter === "All"
+    ? FOOD_ITEMS
+    : FOOD_ITEMS.filter(item => item.tags.includes(activeFilter));
+
   return (
     <div className="customer-app custom-scrollbar">
-      {/* Header */}
       <header className="app-header glass-panel">
         <div className="header-top">
           <div className="location">
-            <span className="bold">Home</span>
-            <span className="address">HSR Layout, Sector 2...</span>
+            <span className="bold">Delivery Now</span>
+            <span className="address">HSR Layout, Sector 2</span>
           </div>
           <div className="profile-icon">
             <ShoppingBag size={20} />
-            {cartTotal > 0 && <div className="cart-badge"></div>}
+            {cartTotal > 0 && <div className="cart-badge pulse-animation"></div>}
           </div>
         </div>
 
-        {/* Ad Banner Hero with 3D Tilt */}
-        <Tilt glareEnable={true} glareMaxOpacity={0.4} glareColor="#ffffff" glarePosition="bottom" glareBorderRadius="16px">
+        <Tilt glareEnable={true} glareMaxOpacity={0.3} glareColor="#ffffff" glarePosition="bottom" glareBorderRadius="20px">
           <div className="promo-banner" ref={promoRef} onClick={handleAdClick}>
+            <div className="promo-glow"></div>
             <div className="promo-content">
-              <span className="badge">Promoted</span>
-              <h2>Bikanervala</h2>
-              <p>Flat 20% OFF on all items!</p>
-              <div className="btn-small">Order Now <ChevronRight size={14} /></div>
+              <span className="badge shimmer">
+                <Sparkles size={10} /> Premium Offer
+              </span>
+              <h2>Bikanervala Special</h2>
+              <p>Flat 20% OFF on all premium items!</p>
+              <div className="btn-small">
+                Order Now <ChevronRight size={14} />
+              </div>
             </div>
             <div className="promo-image">
               <img src="https://images.unsplash.com/photo-1589302168068-964664d93cb0?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" alt="Biryani" />
@@ -229,10 +249,7 @@ const CustomerApp = ({ customerId, onCheckout }) => {
         </Tilt>
       </header>
 
-      {/* Main Content */}
       <div className="app-body">
-
-        {/* Advanced Feature: Dietary Filters */}
         <div className="dietary-filters">
           {["All", "Vegan", "Keto", "High Protein", "Gluten-Free"].map(filter => (
             <button
@@ -245,85 +262,131 @@ const CustomerApp = ({ customerId, onCheckout }) => {
           ))}
         </div>
 
-        <h3 className="section-title">Top Picks For You</h3>
-
-        <div className="food-grid">
-          {/* Item 1 */}
-          <Tilt tiltMaxAngleX={5} tiltMaxAngleY={5} scale={1.02} transitionSpeed={2000} style={{ transformStyle: "preserve-3d" }}>
-            <div className="food-card">
-              <div className="food-img-container">
-                <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" alt="Burger" />
-                <button className="like-btn"><Heart size={16} /></button>
-              </div>
-              <div className="food-details">
-                <div className="food-header">
-                  <h4>Truffle Burger</h4>
-                  <div className="rating"><Star size={12} className="star-icon" fill="currentColor" /> 4.8</div>
-                </div>
-                <p className="food-tags">American • Fast Food</p>
-                <div className="food-footer">
-                  <span className="price">$12.50</span>
-                  <button className="add-btn" onClick={() => handleAddToCart("I88", 12.50)}>ADD</button>
-                </div>
-              </div>
-            </div>
-          </Tilt>
-
-          {/* Item 2 */}
-          <Tilt tiltMaxAngleX={5} tiltMaxAngleY={5} scale={1.02} transitionSpeed={2000}>
-            <div className="food-card">
-              <div className="food-img-container">
-                <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&q=80" alt="Pizza" />
-                <button className="like-btn"><Heart size={16} /></button>
-              </div>
-              <div className="food-details">
-                <div className="food-header">
-                  <h4>Pepperoni Pizza</h4>
-                  <div className="rating"><Star size={12} className="star-icon" fill="currentColor" /> 4.5</div>
-                </div>
-                <p className="food-tags">Italian • Wood-fired</p>
-                <div className="food-footer">
-                  <span className="price">$18.00</span>
-                  <button className="add-btn" onClick={() => handleAddToCart("I92", 18.00)}>ADD</button>
-                </div>
-              </div>
-            </div>
-          </Tilt>
+        <div className="section-header">
+          <h3 className="section-title">
+            <TrendingUp size={20} className="section-icon" />
+            Top Picks For You
+          </h3>
+          <span className="item-count">{filteredItems.length} items</span>
         </div>
 
-        {/* Floating Cart Indicator */}
+        <div className="food-grid">
+          {filteredItems.map((item, index) => (
+            <Tilt
+              key={item.id}
+              tiltMaxAngleX={3}
+              tiltMaxAngleY={3}
+              scale={1.02}
+              transitionSpeed={2000}
+              className="tilt-wrapper"
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+              <div className="food-card fade-in-up">
+                <div className="food-img-container">
+                  <img src={item.image} alt={item.name} loading="lazy" />
+                  <button
+                    className={`like-btn ${likedItems.has(item.id) ? 'liked' : ''}`}
+                    onClick={() => toggleLike(item.id)}
+                  >
+                    <Heart size={16} fill={likedItems.has(item.id) ? 'currentColor' : 'none'} />
+                  </button>
+                  <div className="image-overlay"></div>
+                </div>
+                <div className="food-details">
+                  <div className="food-header">
+                    <h4>{item.name}</h4>
+                    <div className="rating">
+                      <Star size={12} className="star-icon" fill="currentColor" />
+                      {item.rating}
+                    </div>
+                  </div>
+                  <p className="food-description">{item.description}</p>
+                  <p className="food-tags">{item.tags.slice(0, 2).join(' • ')}</p>
+                  <div className="food-footer">
+                    <span className="price">${item.price.toFixed(2)}</span>
+                    {cartItems[item.id] ? (
+                      <div className="quantity-control">
+                        <button className="qty-btn" onClick={() => {
+                          const newTotal = parseFloat((cartTotal - item.price).toFixed(2));
+                          setCartTotal(Math.max(0, newTotal));
+                          setCartItems(prev => {
+                            const newItems = {...prev};
+                            if (newItems[item.id] > 1) {
+                              newItems[item.id]--;
+                            } else {
+                              delete newItems[item.id];
+                            }
+                            return newItems;
+                          });
+                        }}>−</button>
+                        <span className="qty">{cartItems[item.id]}</span>
+                        <button className="qty-btn" onClick={() => handleAddToCart(item)}>+</button>
+                      </div>
+                    ) : (
+                      <button className="add-btn" onClick={() => handleAddToCart(item)}>
+                        ADD
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Tilt>
+          ))}
+        </div>
+
         {cartTotal > 0 && (
-          <div className="floating-cart animate-slide-up">
-            <div className="cart-controls">
+          <div className="floating-cart glass-panel slide-up-animation">
+            <div className="cart-summary">
               <div className="cart-info">
-                <span className="cart-total">${cartTotal.toFixed(2)}</span>
-                {showFlashSale && <span className="discounted-total">${(cartTotal * 0.8).toFixed(2)} (20% OFF)</span>}
+                <div className="cart-details">
+                  <span className="items-count">{Object.values(cartItems).reduce((a, b) => a + b, 0)} items</span>
+                  <span className="cart-total">${cartTotal.toFixed(2)}</span>
+                </div>
+                {showFlashSale && (
+                  <div className="discount-info pulse-animation">
+                    <Zap size={14} fill="currentColor" />
+                    <span className="discounted-total">
+                      ${(cartTotal * 0.8).toFixed(2)} with 20% OFF
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <div className="group-toggle" onClick={toggleGroupOrder}>
-                <div className={`switch ${isGroupOrder ? 'on' : 'off'}`}></div>
-                <span>Split Bill</span>
+              <div className="cart-actions">
+                <div className="group-toggle" onClick={toggleGroupOrder}>
+                  <div className={`switch ${isGroupOrder ? 'on' : 'off'}`}></div>
+                  <span>Split Bill</span>
+                </div>
               </div>
             </div>
 
-            <div className="checkout-actions">
-              <button className="btn-apple-pay" onClick={handleCheckout}>Pay</button>
-              <button className="btn-primary" onClick={handleCheckout}>Checkout <ChevronRight size={16} /></button>
+            <div className="checkout-buttons">
+              <button className="btn-apple-pay" onClick={handleCheckout}>
+                Pay
+              </button>
+              <button className="btn-primary checkout-btn" onClick={handleCheckout}>
+                Checkout <ChevronRight size={16} />
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Flash Sale Modal Overlay */}
       {showFlashSale && (
-        <div className="modal-overlay">
-          <Tilt scale={1.05}>
-            <div className="flash-sale-modal">
-              <button className="close-btn" onClick={() => setShowFlashSale(false)}><X size={20} /></button>
-              <div className="modal-icon"><Zap size={40} color="#fc8019" /></div>
-              <h3>Wait! You forgot something delicious.</h3>
-              <p>Complete your order in the next 15 minutes and get an automatic <strong>20% OFF</strong> applied at checkout!</p>
-              <button className="btn-primary" onClick={handleCheckout}>Claim Discount & Checkout</button>
+        <div className="modal-overlay fade-in-animation">
+          <Tilt scale={1.05} transitionSpeed={1000}>
+            <div className="flash-sale-modal pulse-scale-animation">
+              <button className="close-btn" onClick={() => setShowFlashSale(false)}>
+                <X size={20} />
+              </button>
+              <div className="modal-icon">
+                <Zap size={40} className="zap-icon pulse-animation" />
+              </div>
+              <h3>Wait! Don't Miss Out!</h3>
+              <p>Complete your order in the next <strong>15 minutes</strong> and get an automatic <strong className="highlight">20% OFF</strong> applied at checkout!</p>
+              <button className="btn-primary full-width" onClick={handleCheckout}>
+                Claim Discount & Checkout
+              </button>
             </div>
           </Tilt>
         </div>
