@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, MapPin, Truck, CheckCircle, AlertTriangle, RefreshCcw, Radio, Navigation } from 'lucide-react';
+import { Package, MapPin, Truck, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, RefreshCcw, Radio, Navigation } from 'lucide-react';
 import Tilt from 'react-parallax-tilt';
 import { getRandomRider } from '../data/mockData';
 import './LogisticsPanel.css';
